@@ -39,14 +39,20 @@ const EXTRA_URLS = [
 // trailing slash ignored). Update this list as your public site grows.
 const ALLOWED_PATHS = [
   '/',                 // homepage
-  '/features',
+  '/features',         // not yet live per sitemap — harmless placeholder, safe no-op until it exists
   '/pricing',
-  '/about',
-  '/contact',
+  '/about',            // not yet live per sitemap — harmless placeholder, safe no-op until it exists
+  '/contact',          // not yet live per sitemap — harmless placeholder, safe no-op until it exists
   '/blog',
   '/blog-posts',
   '/terms_of_service_privacy_policy',
-  // add any other genuinely public marketing/resource page here
+  '/demo',
+  '/demo-onb',
+  '/demo-seo',
+  '/demo-blog',
+  '/demo-calls',
+  '/demo-docs',
+  // add any other genuinely public marketing/resource/demo page here
 ];
 
 function normalizePath(pathname) {
