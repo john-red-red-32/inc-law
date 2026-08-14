@@ -133,6 +133,18 @@ async function run() {
   const urls = await getAllPageUrls();
   console.log(`Found ${urls.length} pages to scrape.`);
 
+  // Wipe any previous output before writing fresh content. Without this,
+  // pages that get removed from ALLOWED_PATHS (or renamed) leave stale
+  // HTML sitting in output/ forever — it never gets cleaned up on its
+  // own, since the loop below only ever writes files, never deletes them.
+  // This bit us directly: importing this repo from another project
+  // carried over its old output/ folder, and stale content kept being
+  // served until this was added.
+  if (fs.existsSync('output')) {
+    fs.rmSync('output', { recursive: true, force: true });
+    console.log('Cleared previous output/ directory.');
+  }
+
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
