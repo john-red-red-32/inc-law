@@ -2,9 +2,17 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
-const SITEMAP_INDEX = 'https://incounsel.app/sitemap.xml';
 const APP_URL = 'https://app.incounsel.app/';   // where Bubble's actual assets live
 const ROOT_URL = 'https://incounsel.app/';       // the real, public, crawlable domain
+
+// Fetched directly from the app subdomain, not the root domain. This is
+// deliberate: the root domain currently has no application associated
+// with it in Bubble (it was reassigned to app.incounsel.app in the
+// domain-switch step), and won't correctly serve /sitemap.xml until the
+// Cloudflare Worker is live and intercepting .xml requests. Fetching
+// from APP_URL means this script never depends on the Worker/Routes
+// being deployed yet — it works standalone, at any stage of setup.
+const SITEMAP_INDEX = `${APP_URL}sitemap.xml`;
 const TEST_MODE = false;
 
 // Pages that exist and are meant to be browsed without a specific data
