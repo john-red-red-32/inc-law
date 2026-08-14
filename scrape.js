@@ -25,26 +25,48 @@ const EXTRA_URLS = [
 ];
 
 // CRITICAL — InCounsel-specific, did not exist in the clinic version:
-// authenticated / logged-in surfaces (client portals, case dashboards,
-// matter workspaces) must NEVER be captured as public static HTML.
-// Bubble's sitemap.xml should not normally list these (it's generated
-// from public "Thing" pages), but this filter is a hard backstop in
-// case a dashboard/portal page ever gets indexed or added to EXTRA_URLS
-// by mistake. Adjust these patterns to match your actual private-page
-// URL structure before the first real run.
-const EXCLUDE_PATTERNS = [
-  /\/dashboard/i,
-  /\/portal/i,
-  /\/case[/-]/i,
-  /\/matter[/-]/i,
-  /\/account/i,
-  /\/settings/i,
-  /\/login/i,
-  /\/app[/-]/i,   // adjust/remove if this collides with a real public page
+// the app has dozens of authenticated / logged-in pages (case
+// management, client portals, admin tools, onboarding wizards, etc.)
+// mixed in alongside a small number of genuinely public marketing
+// pages. Page naming isn't consistent enough (mixed hyphens/underscores,
+// no shared prefix) to reliably EXCLUDE the private ones by pattern —
+// one missed pattern and something gets scraped into public static
+// HTML. So this uses an ALLOWLIST instead: only paths listed here are
+// ever scraped. Anything else — including any new page added later
+// without updating this list — is skipped by default. Fails safe.
+//
+// Paths are matched against the URL's pathname (case-insensitive,
+// trailing slash ignored). Update this list as your public site grows.
+const ALLOWED_PATHS = [
+  '/',                 // homepage
+  '/features',
+  '/pricing',
+  '/about',
+  '/contact',
+  '/blog',
+  '/blog-posts',
+  '/terms_of_service_privacy_policy',
+  // add any other genuinely public marketing/resource page here
 ];
 
-function isExcluded(url) {
-  return EXCLUDE_PATTERNS.some((pattern) => pattern.test(url));
+function normalizePath(pathname) {
+  const trimmed = pathname.toLowerCase().replace(/\/+$/, '');
+  return trimmed === '' ? '/' : trimmed;
+}
+
+function isAllowed(url) {
+  let pathname;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return false;
+  }
+  const normalized = normalizePath(pathname);
+  // Allow the listed paths, plus anything nested under /blog or
+  // /blog-posts (individual post URLs won't be in ALLOWED_PATHS by name).
+  if (ALLOWED_PATHS.map(normalizePath).includes(normalized)) return true;
+  if (normalized.startsWith('/blog/') || normalized.startsWith('/blog-posts/')) return true;
+  return false;
 }
 
 async function getUrlsFromSitemap(url) {
@@ -74,13 +96,13 @@ async function getAllPageUrls() {
 
   const deduped = [...new Set(allUrls)];
 
-  const excluded = deduped.filter(isExcluded);
-  if (excluded.length) {
-    console.log(`Excluding ${excluded.length} authenticated/private URL(s) from scrape:`);
-    excluded.forEach((u) => console.log(`  - ${u}`));
+  const skipped = deduped.filter((u) => !isAllowed(u));
+  if (skipped.length) {
+    console.log(`Skipping ${skipped.length} URL(s) not on the public allowlist:`);
+    skipped.forEach((u) => console.log(`  - ${u}`));
   }
 
-  return deduped.filter((u) => !isExcluded(u));
+  return deduped.filter(isAllowed);
 }
 
 function cleanHtml(html) {
