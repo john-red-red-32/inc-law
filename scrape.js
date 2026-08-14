@@ -25,6 +25,11 @@ const TEST_MODE = false;
 // there today (likely a near-empty page) and get overwritten with real
 // content on the next scheduled run once the display page is fixed.
 const EXTRA_URLS = [
+  `${ROOT_URL}`,       // homepage — never depend on the sitemap alone for
+                       // this; Bubble's sitemap can be mid-rebuild (e.g.
+                       // right after a domain change) and return 503s for
+                       // a while, which should never mean the homepage
+                       // silently goes missing from the static snapshot.
   `${ROOT_URL}blog-posts`,
   `${ROOT_URL}features`,
   `${ROOT_URL}pricing`,
