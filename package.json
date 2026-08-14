@@ -1,5 +1,5 @@
 {
-  "name": "gorgeous-clinic-static",
+  "name": "incounsel-static",
   "version": "1.0.0",
   "scripts": {
     "scrape": "node scrape.js"
