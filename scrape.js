@@ -124,6 +124,28 @@ async function getAllPageUrls() {
   return deduped.filter(isAllowed);
 }
 
+function addTrailingSlashes(html, rootUrl) {
+  // Cloudflare Pages serves this snapshot as page/index.html, which means
+  // /page (no trailing slash) always 308-redirects to /page/ before it
+  // resolves to real content. Any ROOT_URL reference left without a
+  // trailing slash — canonical, og:url, JSON-LD, an internal <a href> —
+  // points at a URL that redirects elsewhere, which is exactly what
+  // Ahrefs flags as "canonical points to redirect." This adds the slash
+  // so every self-reference matches the URL that's actually served.
+  const origin = rootUrl.replace(/\/$/, ''); // strip the one trailing slash ROOT_URL already has
+  const escaped = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`${escaped}(\\/[^"'\\s<>)]*)?`, 'g');
+
+  return html.replace(pattern, (match, pathPart) => {
+    if (!pathPart || pathPart === '/') return match; // bare domain or already root
+    const [cleanPath, queryOrHash = ''] = pathPart.split(/(?=[?#])/);
+    if (cleanPath.endsWith('/')) return match; // already has a trailing slash
+    const lastSegment = cleanPath.split('/').pop();
+    if (lastSegment.includes('.')) return match; // file-like (.css/.js/.xml/.svg/...) — leave alone
+    return `${origin}${cleanPath}/${queryOrHash}`;
+  });
+}
+
 function cleanHtml(html) {
   // 1. Bots never run JS — every script is dead weight, strip it all.
   let cleaned = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
@@ -132,6 +154,12 @@ function cleanHtml(html) {
   //    real, public root domain — fixes canonical tags, og:url,
   //    twitter:*, JSON-LD schema URL, and internal nav/page links.
   cleaned = cleaned.split(APP_URL).join(ROOT_URL);
+
+  // 2.5. Fix self-referencing URLs so they match what Cloudflare Pages
+  //    actually serves (trailing slash) instead of the URL that
+  //    redirects to it. Must run before step 3, since step 3
+  //    re-introduces some app-domain references intentionally.
+  cleaned = addTrailingSlashes(cleaned, ROOT_URL);
 
   // 3. Icons use a relative /static/ path that only resolves correctly
   //    against Bubble's actual app domain.
